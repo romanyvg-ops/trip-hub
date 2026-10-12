@@ -1,0 +1,6 @@
+project_id = "gordrkycsmilzgsldmfa"
+
+# Supabase CLI config for Trip Hub.
+# Calendar apps cannot send login headers, so the feed is public and protected by the per-trip token instead.
+[functions.ics]
+verify_jwt = false
