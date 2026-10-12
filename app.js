@@ -361,12 +361,11 @@ function renderItinerary(root, trip, items) {
   const days = [...groups.keys()].sort((a, b) => (a === 'unscheduled') - (b === 'unscheduled') || a.localeCompare(b));
   const stays = items.filter((i) => i.kind === 'stay' && i.starts_at).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const nightStay = (day) => stays.find((s) => s.starts_at.slice(0, 10) <= day && (!s.ends_at || day < s.ends_at.slice(0, 10)));
-  const strip = stays.length ? `
-    <div class="stay-strip">${stays.map((s) => `
-      <button class="chip stay-chip" data-item="${s.id}">🏠 ${esc(stayArea(s) || s.title)}<span class="muted small"> ${esc(fmtDateRange(s.starts_at, s.ends_at))}</span></button>`).join('')}
-    </div>` : '';
-  root.innerHTML = strip + days.map((day) => {
-    const area = day !== 'unscheduled' ? stayArea(nightStay(day)) : null;
+  root.innerHTML = days.map((day) => {
+    // Arrival day: date, then the flight, then the check-in card carries the place.
+    // From the next day on, the heading says where you are.
+    const stay = day !== 'unscheduled' ? nightStay(day) : null;
+    const area = stay && stay.starts_at.slice(0, 10) !== day ? stayArea(stay) : null;
     return `
     <div class="day">
       <h2>${day === 'unscheduled' ? 'Not scheduled yet' : fmtDayLong(day)}${area ? ` <span class="area">📍 ${esc(area)}</span>` : ''}</h2>
