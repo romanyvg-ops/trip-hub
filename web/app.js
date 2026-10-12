@@ -348,7 +348,13 @@ function renderItinerary(root, trip, items) {
   for (const it of items) {
     if (!it.starts_at) { add('unscheduled', { it, sort: '' }); continue; }
     const day = it.starts_at.slice(0, 10);
-    if (it.kind !== 'stay') { add(day, { it, sort: it.all_day ? '0' : '1' + it.starts_at.slice(11, 16) }); continue; }
+    if (it.kind !== 'stay') {
+      // Timed items in time order. All-day transport (a transfer without a set time) goes after the
+      // day's timed travel and before check-in; other all-day items lead the day.
+      const transport = ['flight', 'train', 'bus', 'ferry', 'car'].includes(it.kind);
+      add(day, { it, sort: it.all_day ? (transport ? '2' : '0') : '1' + it.starts_at.slice(11, 16) });
+      continue;
+    }
     add(day, { it, mode: 'checkin', sort: '3' });
     if (it.ends_at && it.ends_at.slice(0, 10) !== day) add(it.ends_at.slice(0, 10), { it, mode: 'checkout', sort: '0' });
   }
