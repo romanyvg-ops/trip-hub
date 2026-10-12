@@ -33,6 +33,8 @@ let realtime = null;
 // ---------------------------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------------------------
+// Only http(s) links are ever used as a destination; anything else becomes a dead link.
+const safeUrl = (u) => (/^https?:\/\//i.test(u || '') ? u : '#');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -295,7 +297,7 @@ async function renderTrip(id) {
     <div class="actions">
       <button class="btn small" id="calBtn">📅 Add to calendar</button>
       <button class="btn small" id="inviteBtn">👋 Invite friends</button>
-      ${photoLinks(links)[0] ? `<a class="btn small" href="${esc(photoLinks(links)[0].url)}" target="_blank" rel="noopener">📷 Photos</a>` : ''}
+      ${photoLinks(links)[0] ? `<a class="btn small" href="${esc(safeUrl(photoLinks(links)[0].url))}" target="_blank" rel="noopener">📷 Photos</a>` : ''}
     </div>
     <nav class="tabs">
       ${['itinerary', 'stays', 'photos', 'expenses', 'links', 'settings'].map((t) => `<button data-tab="${t}" class="${t === tab ? 'active' : ''}">${{ itinerary: 'Itinerary', stays: 'Stays', photos: 'Photos', expenses: 'Expenses', links: 'Links & routes', settings: 'Settings' }[t]}</button>`).join('')}
@@ -490,7 +492,7 @@ function renderStays(root, trip, stays) {
         ${s.starts_at && !s.all_day ? `<dt>Check-in</dt><dd>${fmtTime(s.starts_at)}</dd>` : ''}
         ${s.ends_at && !s.all_day ? `<dt>Check-out</dt><dd>${fmtTime(s.ends_at)}</dd>` : ''}
         ${s.booking_ref ? `<dt>Booking ref</dt><dd>${esc(s.booking_ref)}</dd>` : ''}
-        ${s.url ? `<dt>Link</dt><dd><a href="${esc(s.url)}" target="_blank" rel="noopener" data-stop>${esc(s.url.replace(/^https?:\/\//, '').slice(0, 40))}</a></dd>` : ''}
+        ${s.url ? `<dt>Link</dt><dd><a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener" data-stop>${esc(s.url.replace(/^https?:\/\//, '').slice(0, 40))}</a></dd>` : ''}
         ${s.notes ? `<dt>Notes</dt><dd class="notes">${rich(s.notes)}</dd>` : ''}
       </dl>
       ${(s.attachments || []).length ? `<div class="files" style="margin-top:8px">${s.attachments.map((a) => `<a href="#" data-file="${esc(a.path)}">📎 ${esc(a.filename)}</a> `).join('')}</div>` : ''}
@@ -899,7 +901,7 @@ function renderPhotos(root, trip, links) {
           ? `<iframe class="drive-embed" src="https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folder)}#grid" loading="lazy" title="${esc(l.label)}"></iframe>
              <p class="help">If the folder shows as empty or asks you to sign in, its sharing is set to “Restricted”. The folder owner can fix that in Drive with Share → Anyone with the link → Editor.</p>`
           : isDrive ? '<p class="help">This link does not look like a Drive folder, so it cannot be shown inline. It still opens in Drive.</p>' : ''}
-        <a class="btn primary block" href="${esc(l.url)}" target="_blank" rel="noopener">${isDrive ? 'Open folder in Google Drive' : 'Open the album'}</a>
+        <a class="btn primary block" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener">${isDrive ? 'Open folder in Google Drive' : 'Open the album'}</a>
         <p class="muted small">Added by ${esc(l.profiles?.display_name || memberName(trip, l.created_by))}</p>
       </div>`;
   }).join('');
@@ -957,7 +959,7 @@ function renderLinks(root, trip, links) {
     <div class="stack">
       ${links.length ? links.map((l) => `
         <div class="card row spread link-row">
-          <a href="${esc(l.url)}" target="_blank" rel="noopener">${LINK_CATS[l.category]?.split(' ')[0] || '🔗'} ${esc(l.label)}</a>
+          <a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener">${LINK_CATS[l.category]?.split(' ')[0] || '🔗'} ${esc(l.label)}</a>
           <button class="btn ghost small" data-del-link="${l.id}">remove</button>
         </div>`).join('') : '<div class="empty">Add hiking routes, maps or documents here.<br>Photo albums go under the Photos tab.</div>'}
     </div>
