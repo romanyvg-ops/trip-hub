@@ -1,0 +1,256 @@
+/* Impactful Travels palette: forest, ivory, sand, oat, sage, olive, terracotta, clay, ink. */
+:root {
+  --bg: #2e3e32;            /* forest: the page */
+  --on-bg: #f5efe2;         /* ivory text on the forest */
+  --on-bg-muted: #b7c1b4;
+  --on-bg-soft: rgba(245, 239, 226, .14);
+  --card: #fbf8f1;          /* cards sit light on the forest */
+  --field: #f5efe2;         /* ivory inputs inside cards */
+  --text: #2a2420;          /* ink */
+  --muted: #6f6861;
+  --line: #e8dcc4;          /* sand */
+  --accent: #2e3e32;        /* forest for primary buttons inside cards */
+  --accent-soft: #e4e9df;
+  --accent-ink: #f5efe2;
+  --pop: #c9774e;           /* terracotta for the + button */
+  --pop-ink: #fffaf3;
+  --danger: #b8593a;        /* clay */
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.18);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141b16;
+    --on-bg: #f5efe2;
+    --on-bg-muted: #9aa697;
+    --on-bg-soft: rgba(245, 239, 226, .1);
+    --card: #243129;
+    --field: #1b241e;
+    --text: #f5efe2;
+    --muted: #a7b2a4;
+    --line: #35463b;
+    --accent: #7e8c6a;      /* sage */
+    --accent-soft: #2f3f33;
+    --accent-ink: #141b16;
+    --pop: #c9774e;
+    --pop-ink: #fffaf3;
+    --danger: #e59a7a;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--on-bg);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; }
+p { margin: 0; }
+.small { font-size: .85rem; }
+code { background: var(--on-bg-soft); padding: 1px 6px; border-radius: 6px; }
+
+/* Text that sits directly on the forest background is ivory; inside cards and dialogs it is ink. */
+.muted, .help, .empty, .loading, .error, form.stack label { color: var(--on-bg-muted); }
+.card, dialog { color: var(--text); }
+.card a, dialog a { color: var(--accent); }
+:is(.card, dialog) :is(.muted, .help, form.stack label) { color: var(--muted); }
+:is(.card, dialog) .error { color: var(--danger); }
+#app > .error { color: #f0b9a2; }
+.loading { padding: 40px 16px; text-align: center; }
+.empty { text-align: center; padding: 40px 16px; }
+
+#app { max-width: 640px; margin: 0 auto; padding: 0 16px 100px; }
+
+/* Top bar */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 0 10px;
+  position: sticky; top: 0; z-index: 5;
+  background: var(--bg);
+  padding-top: calc(14px + env(safe-area-inset-top));
+}
+.topbar a, .topbar .btn.ghost { color: var(--on-bg); }
+.topbar .back { text-decoration: none; font-size: 1.4rem; line-height: 1; padding: 4px 6px 4px 0; }
+.topbar .title { flex: 1; min-width: 0; }
+.topbar .title h1 { font-size: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .user { font-size: .85rem; }
+
+/* Cards & lists */
+.card {
+  background: var(--card);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.stack { display: grid; gap: 12px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.section { margin-top: 24px; }
+.section-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+
+a.card { color: var(--text); text-decoration: none; }
+a.card:active { transform: scale(.995); }
+
+.trip-card { display: flex; gap: 14px; align-items: center; }
+.trip-card .emoji { font-size: 2rem; width: 48px; text-align: center; }
+.trip-card .name { font-weight: 600; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.danger { color: var(--danger); }
+.btn.small { padding: 6px 12px; font-size: .85rem; }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.ghost { border-color: transparent; background: transparent; padding-left: 6px; padding-right: 6px; color: var(--muted); }
+.actions .btn { border-color: transparent; }
+
+.fab {
+  position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom));
+  width: 58px; height: 58px; border-radius: 50%;
+  background: var(--pop); color: var(--pop-ink);
+  border: 0; font-size: 2rem; line-height: 1; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,.3);
+  z-index: 6;
+}
+
+/* Forms */
+form.stack label { display: grid; gap: 4px; font-size: .85rem; }
+input, select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--text);
+  font-size: 16px; /* prevents iOS zoom */
+}
+textarea { min-height: 80px; resize: vertical; }
+input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+form.stack label.inline, label.inline { display: flex; align-items: center; gap: 8px; flex-direction: row; font-size: 1rem; color: var(--text); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
+.error { font-size: .9rem; }
+
+/* Auth */
+.auth { margin-top: 15vh; text-align: center; }
+.auth .logo { font-size: 3.5rem; }
+.auth form { margin: 24px auto 0; max-width: 360px; text-align: left; }
+.auth input { border-color: transparent; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin: 14px 0 16px; border-bottom: 1px solid var(--on-bg-soft); overflow-x: auto; }
+.tabs button {
+  background: none; border: 0; padding: 10px 12px; cursor: pointer;
+  color: var(--on-bg-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.tabs button.active { color: var(--on-bg); border-bottom-color: var(--pop); font-weight: 600; }
+
+/* Trip header */
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.members { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip {
+  font-size: .8rem; padding: 3px 10px; border-radius: 999px;
+  background: var(--on-bg-soft); color: var(--on-bg);
+}
+
+/* Itinerary */
+.day { margin-top: 20px; }
+.day h2 { font-size: .95rem; text-transform: uppercase; letter-spacing: .04em; color: var(--on-bg-muted); margin-bottom: 8px; }
+.item {
+  display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: start;
+  padding: 12px 14px; cursor: pointer;
+}
+.item .time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem; padding-top: 2px; }
+.item .time .icon { font-size: 1.3rem; display: block; }
+.item .title { font-weight: 600; }
+.item .meta { color: var(--muted); font-size: .88rem; }
+.item .by { color: var(--muted); font-size: .78rem; }
+.item .files { font-size: .85rem; }
+.item .files a { margin-right: 8px; }
+
+/* Stays */
+.stay .addr { color: var(--muted); font-size: .9rem; }
+.stay .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: .9rem; margin-top: 8px; }
+.stay .kv dt { color: var(--muted); }
+.stay .kv dd { margin: 0; }
+
+/* Photos */
+.drive-embed { width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.demo-embed { display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); background: var(--field); font-size: .9rem; height: 220px; }
+.photo-card h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Expenses */
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.totals div { display: grid; gap: 2px; }
+.totals strong { font-size: 1.05rem; }
+.pos { color: #5c6b4b; } /* olive */
+@media (prefers-color-scheme: dark) { .pos { color: #a9b88f; } }
+.neg { color: var(--danger); }
+.expense { cursor: pointer; }
+.expense .row { flex-wrap: nowrap; align-items: flex-start; }
+.expense .amount { text-align: right; white-space: nowrap; }
+.expense.settlement { opacity: .7; }
+.split { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 0; display: grid; gap: 6px; }
+.split legend { padding: 0 4px; }
+
+.link-row { flex-wrap: nowrap; }
+.link-row a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Dialog */
+dialog {
+  width: min(100%, 560px);
+  max-height: 92vh;
+  border: 0; border-radius: 18px 18px 0 0;
+  padding: 0; background: var(--card); color: var(--text);
+  margin: auto 0 0 0;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.35);
+}
+@media (min-width: 600px) { dialog { border-radius: 18px; margin: auto; } }
+dialog::backdrop { background: rgba(10, 20, 14, .6); }
+.dialog-body { padding: 18px 18px calc(24px + env(safe-area-inset-bottom)); overflow: auto; max-height: 92vh; }
+.dialog-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.dialog-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.dialog-foot .danger { margin-right: auto; }
+
+.import-row { display: grid; gap: 6px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.import-row .btn { justify-self: start; }
+
+.copy-box { display: flex; gap: 8px; }
+.copy-box input { flex: 1; font-size: .85rem; }
+.attach-list { display: grid; gap: 6px; margin-top: 6px; }
+.attach-list .row { justify-content: space-between; }
+.help { font-size: .85rem; line-height: 1.45; }
+.help ol { padding-left: 18px; margin: 6px 0; }
+
+.banner { background: var(--on-bg-soft); color: var(--on-bg); padding: 8px 12px; border-radius: 10px; font-size: .85rem; margin-bottom: 12px; }
+:is(.card, dialog) .banner { background: var(--accent-soft); color: var(--text); }
+
+#toast {
+  position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--card); color: var(--text); padding: 10px 16px; border-radius: 999px; box-shadow: var(--shadow);
+  font-size: .9rem; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; max-width: 90vw;
+}
+#toast.show { opacity: 1; }
