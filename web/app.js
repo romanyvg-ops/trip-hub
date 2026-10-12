@@ -341,36 +341,80 @@ function renderItinerary(root, trip, items) {
     root.innerHTML = `<div class="empty">Nothing planned yet.<br>Tap + to add a flight, a stay or anything else.</div>`;
     return;
   }
+  // Each day lists: all-day items, then timed items in order, then check-ins (after the day's travel),
+  // then a "sleeping at" line. Check-outs go first on their day, before the journey onwards.
   const groups = new Map();
+  const add = (key, entry) => { if (!groups.has(key)) groups.set(key, []); groups.get(key).push(entry); };
   for (const it of items) {
-    const key = it.starts_at ? it.starts_at.slice(0, 10) : 'unscheduled';
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(it);
+    if (!it.starts_at) { add('unscheduled', { it, sort: '' }); continue; }
+    const day = it.starts_at.slice(0, 10);
+    if (it.kind !== 'stay') { add(day, { it, sort: it.all_day ? '0' : '1' + it.starts_at.slice(11, 16) }); continue; }
+    add(day, { it, mode: 'checkin', sort: '3' });
+    if (it.ends_at && it.ends_at.slice(0, 10) !== day) add(it.ends_at.slice(0, 10), { it, mode: 'checkout', sort: '0' });
   }
-  root.innerHTML = [...groups.entries()].map(([day, list]) => `
+  for (const it of items.filter((i) => i.kind === 'stay' && i.starts_at && i.ends_at)) {
+    const d = new Date(it.starts_at.slice(0, 10) + 'T00:00:00');
+    for (d.setDate(d.getDate() + 1); ymd(d) < it.ends_at.slice(0, 10); d.setDate(d.getDate() + 1)) {
+      if (groups.has(ymd(d))) add(ymd(d), { it, mode: 'night', sort: '4' });
+    }
+  }
+  const days = [...groups.keys()].sort((a, b) => (a === 'unscheduled') - (b === 'unscheduled') || a.localeCompare(b));
+  root.innerHTML = days.map((day) => `
     <div class="day">
       <h2>${day === 'unscheduled' ? 'Not scheduled yet' : fmtDayLong(day)}</h2>
-      <div class="stack">${list.map(itemCard).join('')}</div>
+      <div class="stack">${groups.get(day).sort((a, b) => a.sort.localeCompare(b.sort)).map((e) => itemCard(e.it, e.mode, trip)).join('')}</div>
     </div>`).join('');
   bindItemCards(root, trip, items);
 }
 
-function itemCard(it) {
-  const time = it.starts_at && !it.all_day && it.kind !== 'stay' ? fmtTime(it.starts_at) : (it.kind === 'stay' ? 'stay' : it.all_day ? 'all day' : '');
-  let meta = [];
-  if (it.kind === 'stay' && it.ends_at) meta.push(`until ${fmtDay(it.ends_at)}`);
-  else if (it.ends_at && !it.all_day && it.starts_at && it.ends_at.slice(0, 10) === it.starts_at.slice(0, 10)) meta.push(`→ ${fmtTime(it.ends_at)}`);
-  else if (it.ends_at && it.starts_at && it.ends_at.slice(0, 10) !== it.starts_at.slice(0, 10)) meta.push(`→ ${fmtDay(it.ends_at)} ${it.all_day ? '' : fmtTime(it.ends_at)}`);
-  if (it.location) meta.push(it.location);
-  if (it.booking_ref) meta.push(`ref ${it.booking_ref}`);
+const pad2 = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const nightsBetween = (a, b) => Math.round((new Date(b.slice(0, 10) + 'T00:00:00') - new Date(a.slice(0, 10) + 'T00:00:00')) / 86400000);
+
+const mapsSearch = (q) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const mapsDirections = (q) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`;
+const mapLinks = (q) => `<a href="${mapsSearch(q)}" target="_blank" rel="noopener" data-stop>Map</a> · <a href="${mapsDirections(q)}" target="_blank" rel="noopener" data-stop>Directions</a>`;
+
+// Escapes text and turns web links and phone numbers into tappable links.
+function rich(s) {
+  return esc(s)
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" data-stop>$1</a>')
+    .replace(/(^|[\s:])(\+\d[\d\s().-]{6,}\d|0\d{1,3}[\s-]?\d[\d\s-]{5,}\d)/g, (m, pre, num) => `${pre}<a href="tel:${num.replace(/[^\d+]/g, '')}" data-stop>${num}</a>`);
+}
+
+function itemCard(it, mode, trip) {
+  const isStay = it.kind === 'stay';
+  let icon = KINDS[it.kind] || '📌', time = '', title = it.title;
+  if (mode === 'checkin') { time = it.all_day ? 'check-in' : `from ${fmtTime(it.starts_at)}`; title = `Check in: ${it.title}`; }
+  else if (mode === 'checkout') { icon = '🧳'; time = it.all_day ? 'check-out' : `by ${fmtTime(it.ends_at)}`; title = `Check out: ${it.title}`; }
+  else if (mode === 'night') { icon = '🛏️'; time = 'night'; title = `Sleeping at ${it.title}`; }
+  else if (it.starts_at && !it.all_day) time = fmtTime(it.starts_at);
+  else if (it.all_day) time = 'all day';
+
+  if (mode === 'night' || mode === 'checkout') {
+    return `
+    <div class="card item compact" data-item="${it.id}">
+      <div class="time"><span class="icon">${icon}</span>${time}</div>
+      <div><div class="title">${esc(title)}</div>${mode === 'checkout' && it.address ? `<div class="meta">${mapLinks(it.address)}</div>` : ''}</div>
+      <div class="muted">›</div>
+    </div>`;
+  }
+
+  const meta = [];
+  if (mode === 'checkin' && it.ends_at) meta.push(esc(`${nightsBetween(it.starts_at, it.ends_at)} nights, until ${fmtDay(it.ends_at)}`));
+  else if (it.ends_at && !it.all_day && it.starts_at && it.ends_at.slice(0, 10) === it.starts_at.slice(0, 10)) meta.push(esc(`→ ${fmtTime(it.ends_at)}`));
+  else if (it.ends_at && it.starts_at && it.ends_at.slice(0, 10) !== it.starts_at.slice(0, 10)) meta.push(esc(`→ ${fmtDay(it.ends_at)} ${it.all_day ? '' : fmtTime(it.ends_at)}`));
+  if (it.location) meta.push(`<a href="${mapsSearch(it.location + (trip?.destination ? ', ' + trip.destination : ''))}" target="_blank" rel="noopener" data-stop>${esc(it.location)}</a>`);
+  if (it.booking_ref) meta.push(esc(`ref ${it.booking_ref}`));
   const files = (it.attachments || []).map((a) => `<a href="#" data-file="${esc(a.path)}">📎 ${esc(a.filename)}</a>`).join('');
   return `
     <div class="card item" data-item="${it.id}">
-      <div class="time"><span class="icon">${KINDS[it.kind] || '📌'}</span>${time}</div>
+      <div class="time"><span class="icon">${icon}</span>${time}</div>
       <div>
-        <div class="title">${esc(it.title)}</div>
-        ${meta.length ? `<div class="meta">${esc(meta.join(' · '))}</div>` : ''}
-        ${it.notes ? `<div class="meta">${esc(it.notes)}</div>` : ''}
+        <div class="title">${esc(title)}</div>
+        ${meta.length ? `<div class="meta">${meta.join(' · ')}</div>` : ''}
+        ${it.address ? `<div class="meta">📍 ${esc(it.address)}<br>${mapLinks(it.address)}</div>` : ''}
+        ${it.notes ? `<div class="notes">${rich(it.notes)}</div>` : ''}
         ${files ? `<div class="files">${files}</div>` : ''}
         <div class="by">added by ${esc(it.profiles?.display_name || 'someone')}</div>
       </div>
@@ -380,6 +424,7 @@ function itemCard(it) {
 
 function bindItemCards(root, trip, items) {
   $$('[data-item]', root).forEach((card) => card.addEventListener('click', (e) => {
+    if (e.target.closest('[data-stop]')) return;
     const fileLink = e.target.closest('[data-file]');
     if (fileLink) { e.preventDefault(); openFile(fileLink.dataset.file); return; }
     itemDialog(trip, items.find((i) => i.id === card.dataset.item));
@@ -405,13 +450,13 @@ function renderStays(root, trip, stays) {
         <h3>🏠 ${esc(s.title)}</h3>
         <span class="muted small">${s.starts_at ? fmtDateRange(s.starts_at, s.ends_at) : ''}</span>
       </div>
-      ${s.address ? `<div class="addr">${esc(s.address)} · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}" target="_blank" rel="noopener" data-stop>Map</a></div>` : ''}
+      ${s.address ? `<div class="addr">📍 ${esc(s.address)}<br>${mapLinks(s.address)}</div>` : ''}
       <dl class="kv">
         ${s.starts_at && !s.all_day ? `<dt>Check-in</dt><dd>${fmtTime(s.starts_at)}</dd>` : ''}
         ${s.ends_at && !s.all_day ? `<dt>Check-out</dt><dd>${fmtTime(s.ends_at)}</dd>` : ''}
         ${s.booking_ref ? `<dt>Booking ref</dt><dd>${esc(s.booking_ref)}</dd>` : ''}
         ${s.url ? `<dt>Link</dt><dd><a href="${esc(s.url)}" target="_blank" rel="noopener" data-stop>${esc(s.url.replace(/^https?:\/\//, '').slice(0, 40))}</a></dd>` : ''}
-        ${s.notes ? `<dt>Notes</dt><dd>${esc(s.notes)}</dd>` : ''}
+        ${s.notes ? `<dt>Notes</dt><dd class="notes">${rich(s.notes)}</dd>` : ''}
       </dl>
       ${(s.attachments || []).length ? `<div class="files" style="margin-top:8px">${s.attachments.map((a) => `<a href="#" data-file="${esc(a.path)}">📎 ${esc(a.filename)}</a> `).join('')}</div>` : ''}
     </div>`).join('')}</div>`;
