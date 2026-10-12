@@ -1,6 +1,6 @@
 // Trip Hub service worker: keeps the app shell available offline.
 // Network first (so updates arrive immediately), cache as fallback.
-const CACHE = 'trip-hub-v9';
+const CACHE = 'trip-hub-v10';
 const SHELL = ['./', './index.html', './app.js', './ics.js', './pdfimport.js', './style.css', './config.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {
