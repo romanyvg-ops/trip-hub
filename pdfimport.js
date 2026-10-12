@@ -107,7 +107,7 @@ export function parseBookingText(lines) {
 
   // Confirmation number and PIN
   const conf = text.match(/(?:confirmation (?:number|no\.?)|booking (?:number|no\.?)|bevestigingsnummer|boekingsnummer)\s*[:#]?\s*([\d][\d.\s-]{6,})/i);
-  if (conf) out.booking_ref = conf[1].replace(/\s/g, '').replace(/[.-]+$/, '');
+  // The confirmation number is left out on purpose: for any change you need the Booking.com app anyway.
 
   // Check-in / check-out: the date (and time) usually follow the label on the same or next line.
   const inLine = after(lines, /\b(?:check-?\s?in|inchecken|aankomst)\b/i);
@@ -149,6 +149,6 @@ export function parseBookingText(lines) {
   if (price) notes.push(`Price: ${price[1].trim()}`);
   out.notes = notes.join('\n') || null;
 
-  out.found = !!(inDate || out.booking_ref);
+  out.found = !!(inDate || conf);
   return out;
 }
