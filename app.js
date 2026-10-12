@@ -2,6 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { parseIcs, icsToItem } from './ics.js';
 import { extractPdfText, parseBookingText, townFromAddress } from './pdfimport.js';
+import { weatherForDays, describe as describeWeather } from './weather.js';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -373,12 +374,27 @@ function renderItinerary(root, trip, items) {
     const stay = day !== 'unscheduled' ? nightStay(day) : null;
     const area = stay && stay.starts_at.slice(0, 10) !== day ? stayArea(stay) : null;
     return `
-    <div class="day">
+    <div class="day" data-day="${day}">
       <h2>${day === 'unscheduled' ? 'Not scheduled yet' : fmtDayLong(day)}${area ? ` <span class="area">📍 ${esc(area)}</span>` : ''}</h2>
       <div class="stack">${groups.get(day).sort((a, b) => a.sort.localeCompare(b.sort)).map((e) => itemCard(e.it, e.mode, trip)).join('')}</div>
     </div>`;
-  }).join('');
+  }).join('') + '<p class="wx-credit">Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>, shown up to 16 days ahead.</p>';
   bindItemCards(root, trip, items);
+
+  // Weather per day, for the place you sleep that night (or the trip destination). Fills in after render.
+  const placeFor = (day) => {
+    const s = nightStay(day) || stays.find((x) => x.ends_at && x.ends_at.slice(0, 10) === day);
+    return stayArea(s) || trip.destination || null;
+  };
+  const pairs = days.filter((d) => d !== 'unscheduled').map((day) => ({ day, place: placeFor(day) }));
+  weatherForDays(pairs).then((wx) => {
+    for (const [day, w] of Object.entries(wx)) {
+      const h2 = root.querySelector(`.day[data-day="${day}"] h2`);
+      if (!h2 || !root.isConnected) continue;
+      const { icon, label } = describeWeather(w.code);
+      h2.insertAdjacentHTML('beforeend', `<span class="wx" title="${esc(label)} in ${esc(w.place)}">${icon} ${w.max}°<span class="wx-min">/${w.min}°</span>${w.rain >= 30 ? ` <span class="wx-rain">💧${w.rain}%</span>` : ''}</span>`);
+    }
+  });
 }
 
 // The town or area of a stay: its "Place" field, or the town picked out of its address.
