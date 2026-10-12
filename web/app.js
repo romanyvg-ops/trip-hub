@@ -967,11 +967,12 @@ function renderExplore(root, trip, items) {
     return;
   }
   const guides = matchGuides([trip.destination, ...places]);
-  let place = sessionStorage.getItem('explore:' + trip.id);
-  if (!places.includes(place)) place = places[0];
+  // The chosen place can also be a nearby page (a national park, say) picked from a chip below.
+  let place = sessionStorage.getItem('explore:' + trip.id) || places[0];
+  const chips = places.includes(place) ? places : [...places, place];
 
   root.innerHTML = `
-    ${places.length > 1 ? `<div class="row" id="placePick">${places.map((p) => `<button class="chip place-chip ${p === place ? 'active' : ''}" data-place="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}
+    ${chips.length > 1 ? `<div class="row" id="placePick">${chips.map((p) => `<button class="chip place-chip ${p === place ? 'active' : ''}" data-place="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}
     ${guides.map((g) => `
       <a class="card guide-card" href="${g.url}" target="_blank" rel="noopener">
         <div class="muted small">Impactful Travels guide</div>
@@ -989,7 +990,10 @@ function renderExplore(root, trip, items) {
       return;
     }
     const icons = { See: '👀', Do: '🥾', Eat: '🍽️', Drink: '🍷' };
-    body.innerHTML = data.sections.map((s, i) => `
+    const nearby = (data.nearby || []).filter((n) => n !== place);
+    body.innerHTML = (nearby.length ? `
+      <div class="row nearby"><span class="muted small">Also nearby:</span>${nearby.map((n) => `<button class="chip place-chip" data-place="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : '') +
+    data.sections.map((s, i) => `
       <details class="explore-section" ${i === 0 ? 'open' : ''}>
         <summary>${icons[s.name] || '📌'} ${esc(s.name)} <span class="muted small">${s.listings.length ? s.listings.length : ''}</span></summary>
         <div class="stack">
@@ -1005,6 +1009,7 @@ function renderExplore(root, trip, items) {
         </div>
       </details>`).join('') + `
       <p class="wx-credit">From <a href="${esc(data.url)}" target="_blank" rel="noopener">Wikivoyage: ${esc(data.title)}</a>, CC BY-SA. Written by travellers; check opening times before you go.</p>`;
+    $$('[data-place]', body).forEach((b) => b.addEventListener('click', () => { sessionStorage.setItem('explore:' + trip.id, b.dataset.place); renderExplore(root, trip, items); }));
   }).catch((e) => { body.innerHTML = `<div class="empty">Could not load tips right now (${esc(e.message)}).</div>`; });
 }
 
