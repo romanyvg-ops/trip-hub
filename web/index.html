@@ -21,7 +21,18 @@
   <script type="module" src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // Check for a new version every time the app comes back to the foreground.
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update(); });
+      }).catch(() => {});
+      // When a new version has taken over an already-installed app, reload once so it shows immediately.
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloaded || !hadController) return;
+        reloaded = true;
+        if (!document.querySelector('dialog[open]')) location.reload();
+      });
     }
   </script>
 </body>
