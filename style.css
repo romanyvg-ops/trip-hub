@@ -188,6 +188,12 @@ form.stack label.inline, label.inline { display: flex; align-items: center; gap:
 .item .title { font-weight: 600; }
 .item .meta { color: var(--muted); font-size: .88rem; }
 .item .by { color: var(--muted); font-size: .78rem; }
+.item .notes { color: var(--muted); font-size: .88rem; white-space: pre-line; margin-top: 2px; }
+.item.compact { padding: 8px 14px; }
+.item.compact .title { font-weight: 500; }
+.item .meta a, .stay .addr a, .notes a { color: var(--accent); text-decoration: none; }
+.item .meta a:active, .stay .addr a:active, .notes a:active { text-decoration: underline; }
+.stay .notes { white-space: pre-line; }
 .item .files { font-size: .85rem; }
 .item .files a { margin-right: 8px; }
 

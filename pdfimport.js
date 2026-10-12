@@ -142,12 +142,13 @@ export function parseBookingText(lines) {
   const guests = text.match(/(?:number of guests|aantal gasten)\s*:?\s*([^\n]+)/i);
   const room = lines.find((l, i) => i > 0 && /^(?:prepayment|vooruitbetaling)/i.test(lines[i + 1] || '') && l.length < 60 && !/:/.test(l));
 
+  // One fact per line; the app shows these as separate lines with tappable phone numbers.
   const notes = [];
-  if (pin) notes.push(`PIN code ${pin[1]}`);
-  if (room) notes.push(room.trim());
-  if (guests) notes.push(guests[1].trim());
-  if (phone) notes.push(`Phone ${phone[1].trim()}`);
-  if (price) notes.push(`Total ${price[1].trim()}`);
+  if (room) notes.push(`Room: ${room.trim()}`);
+  if (guests) notes.push(`Guests: ${guests[1].trim()}`);
+  if (phone) notes.push(`Property phone: ${phone[1].trim()}`);
+  if (price) notes.push(`Price: ${price[1].trim()}`);
+  if (pin) notes.push(`Booking.com PIN: ${pin[1]} (needed with the confirmation number to view or change the booking)`);
   out.notes = notes.join('\n') || null;
 
   out.found = !!(inDate || out.booking_ref);
