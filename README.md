@@ -115,6 +115,10 @@ To see the app with sample data before doing any setup at all, open http://local
 6. Under **Photos**, link a Google Drive folder (shared as "Anyone with the link → Editor") or a Google Photos / iCloud shared album. A Drive folder shows its contents right inside the app; everyone adds their pictures there.
 7. When you add a stay, flight or anything else, the form has a **Cost** box: amount, who paid, who shares it. Fill it in and the expense is created at the same time (a Booking.com PDF prefills the amount). Whenever someone pays for something else, they add it under **Expenses**: what, how much, who paid, who shares it (equal split). The tab keeps a running balance per person and, at the end, lists the fewest payments that settle everyone up. Tap "Mark as paid" when the money has been sent. The trip owner sets the currency under Settings.
 
+## Explore tab
+
+Things to do for each place you stay (and the trip destination): the See, Do, Eat and Drink sections of that place's [Wikivoyage](https://en.wikivoyage.org/) page, each entry with a map link. Free, no key, CC BY-SA, cached on the phone for a week. When the destination matches one of the Impactful Travels guides (list in `web/explore.js`), a link to that guide is shown first.
+
 ## Weather
 
 Each day on the itinerary shows the forecast for the place you sleep that night (taken from the stay's Place field or its address), or the trip destination if there's no stay. Data comes from [Open-Meteo](https://open-meteo.com/), free and without a key, up to 16 days ahead; days further out show nothing until they come into range. Forecasts are cached on the phone for an hour, place lookups for a month.

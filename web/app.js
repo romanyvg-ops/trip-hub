@@ -3,6 +3,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { parseIcs, icsToItem } from './ics.js';
 import { extractPdfText, parseBookingText, townFromAddress } from './pdfimport.js';
 import { weatherForDays, describe as describeWeather } from './weather.js';
+import { thingsToDo, matchGuides } from './explore.js';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -300,7 +301,7 @@ async function renderTrip(id) {
       ${photoLinks(links)[0] ? `<a class="btn small" href="${esc(safeUrl(photoLinks(links)[0].url))}" target="_blank" rel="noopener">📷 Photos</a>` : ''}
     </div>
     <nav class="tabs">
-      ${['itinerary', 'stays', 'photos', 'expenses', 'links', 'settings'].map((t) => `<button data-tab="${t}" class="${t === tab ? 'active' : ''}">${{ itinerary: 'Itinerary', stays: 'Stays', photos: 'Photos', expenses: 'Expenses', links: 'Links & routes', settings: 'Settings' }[t]}</button>`).join('')}
+      ${['itinerary', 'stays', 'explore', 'photos', 'expenses', 'links', 'settings'].map((t) => `<button data-tab="${t}" class="${t === tab ? 'active' : ''}">${{ itinerary: 'Itinerary', stays: 'Stays', explore: 'Explore', photos: 'Photos', expenses: 'Expenses', links: 'Links & routes', settings: 'Settings' }[t]}</button>`).join('')}
     </nav>
     <section id="tabBody"></section>
     ${['itinerary', 'stays', 'expenses'].includes(tab) ? '<button class="fab" id="addItem" aria-label="Add">+</button>' : ''}`;
@@ -317,6 +318,7 @@ async function renderTrip(id) {
   const body = $('#tabBody');
   if (tab === 'itinerary') renderItinerary(body, trip, items);
   if (tab === 'stays') renderStays(body, trip, items.filter((i) => i.kind === 'stay'));
+  if (tab === 'explore') renderExplore(body, trip, items);
   if (tab === 'photos') renderPhotos(body, trip, photoLinks(links));
   if (tab === 'expenses') renderExpenses(body, trip, expenses);
   if (tab === 'links') renderLinks(body, trip, links.filter((l) => !['photos', 'drive'].includes(l.category)));
@@ -951,6 +953,59 @@ function renderPhotos(root, trip, links) {
     if (error) return toast(error.message);
     renderTrip(trip.id);
   }));
+}
+
+// --- Explore: things to do where you're staying ------------------------------------------
+function renderExplore(root, trip, items) {
+  const stays = items.filter((i) => i.kind === 'stay');
+  const places = [];
+  for (const s of stays) { const a = stayArea(s); if (a && !places.includes(a)) places.push(a); }
+  const dest = (trip.destination || '').split(',')[0].trim();
+  if (dest && !places.some((p) => p.toLowerCase() === dest.toLowerCase())) places.push(dest);
+  if (!places.length) {
+    root.innerHTML = '<div class="empty">Add a stay with an address, or a destination under Settings, and tips for that place appear here.</div>';
+    return;
+  }
+  const guides = matchGuides([trip.destination, ...places]);
+  let place = sessionStorage.getItem('explore:' + trip.id);
+  if (!places.includes(place)) place = places[0];
+
+  root.innerHTML = `
+    ${places.length > 1 ? `<div class="row" id="placePick">${places.map((p) => `<button class="chip place-chip ${p === place ? 'active' : ''}" data-place="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}
+    ${guides.map((g) => `
+      <a class="card guide-card" href="${g.url}" target="_blank" rel="noopener">
+        <div class="muted small">Impactful Travels guide</div>
+        <div class="title">${esc(g.name)}: the full guide, routes and tips →</div>
+      </a>`).join('')}
+    <div id="exploreBody"><p class="loading">Looking up ${esc(place)}…</p></div>`;
+
+  $$('[data-place]', root).forEach((b) => b.addEventListener('click', () => { sessionStorage.setItem('explore:' + trip.id, b.dataset.place); renderExplore(root, trip, items); }));
+
+  const body = $('#exploreBody', root);
+  thingsToDo(place).then((data) => {
+    if (!root.isConnected) return;
+    if (!data || !data.sections.length) {
+      body.innerHTML = `<div class="empty">Nothing on Wikivoyage for “${esc(place)}” yet.<br><a href="https://en.wikivoyage.org/w/index.php?search=${encodeURIComponent(place)}" target="_blank" rel="noopener">Search Wikivoyage</a></div>`;
+      return;
+    }
+    const icons = { See: '👀', Do: '🥾', Eat: '🍽️', Drink: '🍷' };
+    body.innerHTML = data.sections.map((s, i) => `
+      <details class="explore-section" ${i === 0 ? 'open' : ''}>
+        <summary>${icons[s.name] || '📌'} ${esc(s.name)} <span class="muted small">${s.listings.length ? s.listings.length : ''}</span></summary>
+        <div class="stack">
+          ${s.listings.length ? s.listings.map((l) => `
+            <div class="card poi">
+              <div class="row spread">
+                <strong>${esc(l.name)}</strong>
+                <a class="small" href="${l.lat && l.lon ? `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lon}` : mapsSearch(`${l.name}, ${place}`)}" target="_blank" rel="noopener">Map</a>
+              </div>
+              ${l.address ? `<div class="muted small">${esc(l.address)}</div>` : ''}
+              ${l.desc ? `<div class="small">${esc(l.desc)}</div>` : ''}
+            </div>`).join('') : `<div class="card small">${esc(s.text)}</div>`}
+        </div>
+      </details>`).join('') + `
+      <p class="wx-credit">From <a href="${esc(data.url)}" target="_blank" rel="noopener">Wikivoyage: ${esc(data.title)}</a>, CC BY-SA. Written by travellers; check opening times before you go.</p>`;
+  }).catch((e) => { body.innerHTML = `<div class="empty">Could not load tips right now (${esc(e.message)}).</div>`; });
 }
 
 // --- Links & routes ---------------------------------------------------------------

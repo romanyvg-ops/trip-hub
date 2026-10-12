@@ -212,6 +212,21 @@ form.stack label.inline, label.inline { display: flex; align-items: center; gap:
 .stay .kv dt { color: var(--muted); }
 .stay .kv dd { margin: 0; }
 
+/* Explore */
+.place-chip { border: 0; cursor: pointer; font-size: .9rem; padding: 6px 14px; }
+.place-chip.active { background: var(--pop); color: var(--pop-ink); }
+.guide-card { display: block; margin-top: 12px; border-left: 4px solid var(--pop); }
+.guide-card .title { font-weight: 600; margin-top: 2px; }
+.explore-section { margin-top: 18px; }
+.explore-section summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; padding: 6px 0; list-style: none; display: flex; gap: 8px; align-items: baseline; }
+.explore-section summary::-webkit-details-marker { display: none; }
+.explore-section summary::after { content: '›'; margin-left: auto; color: var(--on-bg-muted); transform: rotate(90deg); }
+.explore-section[open] summary::after { transform: rotate(-90deg); }
+.explore-section .stack { margin-top: 8px; }
+.poi { padding: 10px 14px; }
+.poi .row { flex-wrap: nowrap; align-items: baseline; }
+.poi .row a { white-space: nowrap; }
+
 /* Photos */
 .drive-embed { width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .demo-embed { display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); background: var(--field); font-size: .9rem; height: 220px; }
