@@ -76,6 +76,18 @@ supabase functions deploy ics --no-verify-jwt
 
 ### 6. Put the app online
 
+**Current setup (done 2026-10-12):** the app is published with GitHub Pages at
+https://romanyvg-ops.github.io/trip-hub/ from the `gh-pages` branch of https://github.com/romanyvg-ops/trip-hub.
+To publish a change: commit on `main`, then
+
+```bash
+git subtree push --prefix web origin gh-pages
+```
+
+The calendar feed is deployed with `npx supabase functions deploy ics --no-verify-jwt --project-ref gordrkycsmilzgsldmfa`.
+
+**Other options.**
+
 The `web` folder is plain static files, so it can go anywhere: the same host as the Impactful Travels site (a subfolder or a subdomain like `trips.`), Netlify, Cloudflare Pages or GitHub Pages. It must be served over `https` for the install-to-home-screen and offline features to work.
 
 Then go back to step 3 and make sure the Site URL matches.
@@ -99,7 +111,7 @@ To see the app with sample data before doing any setup at all, open http://local
 3. On the phone: in Safari tap Share → **Add to Home Screen**; in Chrome on Android tap the menu → **Install app**. It then opens like a normal app.
 4. Everyone taps **Add to calendar** once. iPhone users tap the subscribe button; Google Calendar users paste the link under *Add calendar → From URL* on a computer, and it syncs to their phone.
 5. Anyone can add flights, stays, dinners and upload the PDF or screenshot of the ticket. Everyone's calendar updates on its own within about an hour.
-   Faster: on the add form tap **Import from a calendar file** and pick the `.ics` file you get from Airbnb (Trips → reservation → Add to calendar), Booking.com (confirmation email → Add to calendar) or an airline. Title, dates, address and booking code are filled in for you to check.
+   Faster: on the add form tap **Import a Booking.com PDF** and pick the confirmation PDF from the Booking.com app or email. Hotel name, address, check-in and check-out with times, confirmation number and PIN are filled in, and the PDF is attached to the stay. Or tap **Import a calendar file** for the `.ics` you get from Airbnb (Trips → reservation → Add to calendar), Booking.com or an airline. Everything is filled in for you to check before saving.
 6. Under **Photos**, link a Google Drive folder (shared as "Anyone with the link → Editor") or a Google Photos / iCloud shared album. A Drive folder shows its contents right inside the app; everyone adds their pictures there.
 7. Whenever someone pays for the group, they add it under **Expenses**: what, how much, who paid, who shares it (equal split). The tab keeps a running balance per person and, at the end, lists the fewest payments that settle everyone up. Tap "Mark as paid" when the money has been sent. The trip owner sets the currency under Settings.
 

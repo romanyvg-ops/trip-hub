@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { parseIcs, icsToItem } from './ics.js';
+import { extractPdfText, parseBookingText } from './pdfimport.js';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -431,8 +432,11 @@ function itemDialog(trip, item) {
     <div class="dialog-head"><h2>${editing ? 'Edit' : 'Add to trip'}</h2><button class="btn ghost" data-close>✕</button></div>
     ${editing ? '' : `
     <div class="import-row">
-      <label class="btn small">📥 Import from a calendar file (.ics)<input type="file" accept=".ics,text/calendar" hidden id="icsFile"></label>
-      <p class="help">Airbnb: Trips → reservation → “Add to calendar”. Booking.com: confirmation email → “Add to calendar”. Airline and train tickets usually have one too.</p>
+      <div class="row">
+        <label class="btn small">📄 Import a Booking.com PDF<input type="file" accept=".pdf,application/pdf" hidden id="pdfFile"></label>
+        <label class="btn small">📥 Import a calendar file (.ics)<input type="file" accept=".ics,text/calendar" hidden id="icsFile"></label>
+      </div>
+      <p class="help">Booking.com: the confirmation PDF from the app or email. Airbnb: Trips → reservation → “Add to calendar” gives an .ics file. Airline and train tickets usually have one too. The details are filled in for you to check.</p>
     </div>`}
     <form class="stack" id="itemForm">
       <div class="two">
@@ -490,6 +494,20 @@ function itemDialog(trip, item) {
     form.booking_ref.value = v.booking_ref || ''; form.url.value = v.url || ''; form.notes.value = v.notes || '';
     relabel();
   };
+  $('#pdfFile', dlg)?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const err = $('#itemErr', dlg); err.textContent = '';
+    toast('Reading the PDF…');
+    let parsed;
+    try { parsed = parseBookingText(await extractPdfText(file)); }
+    catch (ex) { err.textContent = `Could not read that PDF: ${ex.message}`; return; }
+    if (!parsed.found) { err.textContent = 'That does not look like a Booking.com confirmation. You can still fill the form in by hand and attach the PDF.'; }
+    fillForm({ ...parsed, url: null, location: null });
+    // Attach the PDF itself to the stay as well.
+    try { const dt = new DataTransfer(); dt.items.add(file); form.files.files = dt.files; } catch {}
+    if (parsed.found) toast('Filled in from the PDF. Check it and save.');
+  });
   $('#icsFile', dlg)?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
