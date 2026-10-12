@@ -1,7 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { parseIcs, icsToItem } from './ics.js';
-import { extractPdfText, parseBookingText } from './pdfimport.js';
+import { extractPdfText, parseBookingText, townFromAddress } from './pdfimport.js';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -359,13 +359,25 @@ function renderItinerary(root, trip, items) {
     }
   }
   const days = [...groups.keys()].sort((a, b) => (a === 'unscheduled') - (b === 'unscheduled') || a.localeCompare(b));
-  root.innerHTML = days.map((day) => `
+  const stays = items.filter((i) => i.kind === 'stay' && i.starts_at).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const nightStay = (day) => stays.find((s) => s.starts_at.slice(0, 10) <= day && (!s.ends_at || day < s.ends_at.slice(0, 10)));
+  const strip = stays.length ? `
+    <div class="stay-strip">${stays.map((s) => `
+      <button class="chip stay-chip" data-item="${s.id}">🏠 ${esc(stayArea(s) || s.title)}<span class="muted small"> ${esc(fmtDateRange(s.starts_at, s.ends_at))}</span></button>`).join('')}
+    </div>` : '';
+  root.innerHTML = strip + days.map((day) => {
+    const area = day !== 'unscheduled' ? stayArea(nightStay(day)) : null;
+    return `
     <div class="day">
-      <h2>${day === 'unscheduled' ? 'Not scheduled yet' : fmtDayLong(day)}</h2>
+      <h2>${day === 'unscheduled' ? 'Not scheduled yet' : fmtDayLong(day)}${area ? ` <span class="area">📍 ${esc(area)}</span>` : ''}</h2>
       <div class="stack">${groups.get(day).sort((a, b) => a.sort.localeCompare(b.sort)).map((e) => itemCard(e.it, e.mode, trip)).join('')}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   bindItemCards(root, trip, items);
 }
+
+// The town or area of a stay: its "Place" field, or the town picked out of its address.
+const stayArea = (s) => (s ? (s.location || townFromAddress(s.address)) : null);
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -385,9 +397,11 @@ function rich(s) {
 function itemCard(it, mode, trip) {
   const isStay = it.kind === 'stay';
   let icon = KINDS[it.kind] || '📌', time = '', title = it.title;
-  if (mode === 'checkin') { time = it.all_day ? 'check-in' : `from ${fmtTime(it.starts_at)}`; title = `Check in: ${it.title}`; }
-  else if (mode === 'checkout') { icon = '🧳'; time = it.all_day ? 'check-out' : `by ${fmtTime(it.ends_at)}`; title = `Check out: ${it.title}`; }
-  else if (mode === 'night') { icon = '🛏️'; time = 'night'; title = `Sleeping at ${it.title}`; }
+  const area = isStay ? stayArea(it) : null;
+  const inArea = area && !it.title.toLowerCase().includes(area.toLowerCase()) ? `, ${area}` : '';
+  if (mode === 'checkin') { time = it.all_day ? 'check-in' : `from ${fmtTime(it.starts_at)}`; title = `Check in: ${it.title}${inArea}`; }
+  else if (mode === 'checkout') { icon = '🧳'; time = it.all_day ? 'check-out' : `by ${fmtTime(it.ends_at)}`; title = `Check out: ${it.title}${inArea}`; }
+  else if (mode === 'night') { icon = '🛏️'; time = 'night'; title = `Sleeping at ${it.title}${inArea}`; }
   else if (it.starts_at && !it.all_day) time = fmtTime(it.starts_at);
   else if (it.all_day) time = 'all day';
 
@@ -503,6 +517,15 @@ function itemDialog(trip, item) {
         <label>Link <input type="url" name="url" value="${esc(it.url || '')}" placeholder="https://"></label>
       </div>
       <label>Notes <textarea name="notes" placeholder="Door code, meeting point, who booked it…">${esc(it.notes || '')}</textarea></label>
+      ${editing ? '' : `
+      <fieldset class="split cost">
+        <legend class="muted small">Cost · goes straight into Expenses (leave empty if nothing was paid)</legend>
+        <div class="two">
+          <label>Amount (${esc(trip.currency || 'EUR')}) <input name="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
+          <label>Paid by <select name="paid_by">${trip.trip_members.map((m) => `<option value="${m.user_id}" ${m.user_id === user.id ? 'selected' : ''}>${esc(m.profiles?.display_name || '?')}</option>`).join('')}</select></label>
+        </div>
+        <div class="row"><span class="muted small">Split between</span>${trip.trip_members.map((m) => `<label class="inline small"><input type="checkbox" name="split" value="${m.user_id}" checked> ${esc(m.profiles?.display_name || '?')}</label>`).join('')}</div>
+      </fieldset>`}
       <label>Tickets & confirmations
         <input type="file" name="files" multiple accept=".pdf,image/*,.pkpass">
         <div class="attach-list" id="attachList">${(it.attachments || []).map((a) => `
@@ -537,6 +560,7 @@ function itemDialog(trip, item) {
     form.ends_at.value = v.all_day ? (v.ends_at || '').slice(0, 10) : toInputDT(v.ends_at);
     form.location.value = v.location || ''; form.address.value = v.address || '';
     form.booking_ref.value = v.booking_ref || ''; form.url.value = v.url || ''; form.notes.value = v.notes || '';
+    if (form.amount && v.price) form.amount.value = v.price;
     relabel();
   };
   $('#pdfFile', dlg)?.addEventListener('change', async (e) => {
@@ -548,7 +572,7 @@ function itemDialog(trip, item) {
     try { parsed = parseBookingText(await extractPdfText(file)); }
     catch (ex) { err.textContent = `Could not read that PDF: ${ex.message}`; return; }
     if (!parsed.found) { err.textContent = 'That does not look like a Booking.com confirmation. You can still fill the form in by hand and attach the PDF.'; }
-    fillForm({ ...parsed, url: null, location: null });
+    fillForm({ ...parsed, url: null });
     // Attach the PDF itself to the stay as well.
     try { const dt = new DataTransfer(); dt.items.add(file); form.files.files = dt.files; } catch {}
     if (parsed.found) toast('Filled in from the PDF. Check it and save.');
@@ -632,8 +656,21 @@ function itemDialog(trip, item) {
       if (up.error) { err.textContent = `Upload failed: ${up.error.message}`; btn.disabled = false; btn.textContent = 'Save'; return; }
       await sb.from('attachments').insert({ item_id: saved.id, trip_id: trip.id, path, filename: f.name, size: f.size });
     }
+
+    // Cost entered on a new item becomes an expense.
+    let expenseNote = '';
+    const amount = !editing && form.amount ? Number(form.amount.value) : 0;
+    if (amount > 0) {
+      const split_with = $$('input[name=split]:checked', form).map((i) => i.value);
+      const { error: expErr } = await sb.from('expenses').insert({
+        trip_id: trip.id, title: payload.title, amount: amount.toFixed(2), paid_by: form.paid_by.value,
+        split_with: split_with.length ? split_with : [form.paid_by.value],
+        spent_on: new Date().toISOString().slice(0, 10), notes: KIND_LABELS[payload.kind] || null,
+      });
+      expenseNote = expErr ? ` (expense not added: ${expErr.message})` : `, ${money(cents(amount), trip.currency || 'EUR')} added to expenses`;
+    }
     dlg.close();
-    toast(editing ? 'Saved' : 'Added');
+    toast((editing ? 'Saved' : 'Added') + expenseNote);
     renderTrip(trip.id);
   });
 }

@@ -100,6 +100,34 @@ function parseTableLayout(lines, text) {
   };
 }
 
+// "€ 1.246,00", "EUR 1,246.00", "€ 408" -> 1246 / 1246 / 408
+export function parseAmount(s) {
+  let t = String(s).replace(/[^\d.,]/g, '');
+  if (!t) return null;
+  const lastDot = t.lastIndexOf('.'), lastComma = t.lastIndexOf(',');
+  if (lastDot >= 0 && lastComma >= 0) {
+    const dec = Math.max(lastDot, lastComma);
+    t = t.slice(0, dec).replace(/[.,]/g, '') + '.' + t.slice(dec + 1);
+  } else if (lastDot >= 0 || lastComma >= 0) {
+    const i = Math.max(lastDot, lastComma);
+    const after = t.length - i - 1;
+    t = after === 1 || after === 2 ? t.slice(0, i).replace(/[.,]/g, '') + '.' + t.slice(i + 1) : t.replace(/[.,]/g, '');
+  }
+  const n = Number(t);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+}
+
+// "Dobrota bb, 85330 Kotor, Montenegro" -> "Kotor". Takes the part with the postal code, or the second-last part.
+export function townFromAddress(address) {
+  if (!address) return null;
+  const parts = address.split(',').map((s) => s.trim()).filter(Boolean);
+  // Postcodes: Dutch "1015 AA", Portuguese "9360-123", plain 4-5 digits.
+  const postcode = /\b\d{4}\s?[A-Z]{2}\b|\b\d{4}-\d{3}\b|\b\d{4,5}\b/;
+  const withPostcode = parts.find((p) => postcode.test(p));
+  const town = withPostcode ? withPostcode.replace(new RegExp(postcode.source, 'g'), '').replace(/[-–]/g, '').trim() : parts.length >= 3 ? parts[parts.length - 2] : null;
+  return town && town.length > 1 ? town : null;
+}
+
 export function parseBookingText(lines) {
   const text = lines.join('\n');
   const out = { kind: 'stay', all_day: false };
@@ -134,19 +162,19 @@ export function parseBookingText(lines) {
       .replace(/\s*(?:phone|telefoon|tel)\b.*$/i, '')
       .replace(/\s+\d{1,2}\s+\d{1,2}\s+\d+\s*\/\s*\d+\s*$/, '') // table day numbers glued to the address line
       .trim();
+    out.location = townFromAddress(out.address); // the "where are we" shown on the itinerary
   }
 
   const phone = text.match(/(?:phone|telefoon|tel\.?)\s*[:#]?\s*(\+?[\d][\d\s()-]{7,})/i);
   const price = text.match(/(?:total price|final price|totaalprijs|totale prijs|total|price|prijs)\s*[:#]?\s*((?:€|EUR)\s?[\d.,]+|[\d.,]+\s?(?:EUR|€))/i);
-  const guests = text.match(/(?:number of guests|aantal gasten)\s*:?\s*([^\n]+)/i);
   const room = lines.find((l, i) => i > 0 && /^(?:prepayment|vooruitbetaling)/i.test(lines[i + 1] || '') && l.length < 60 && !/:/.test(l));
 
   // One fact per line; the app shows these as separate lines with tappable phone numbers.
   const notes = [];
   if (room) notes.push(`Room: ${room.trim()}`);
-  if (guests) notes.push(`Guests: ${guests[1].trim()}`);
   if (phone) notes.push(`Property phone: ${phone[1].trim()}`);
-  if (price) notes.push(`Price: ${price[1].trim()}`);
+  // The price becomes an expense rather than a note.
+  if (price) out.price = parseAmount(price[1]);
   out.notes = notes.join('\n') || null;
 
   out.found = !!(inDate || conf);
